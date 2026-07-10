@@ -66,6 +66,7 @@ const AllTasks = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dateFilter, setDateFilter] = useState("all"); // all, today, overdue, upcoming
+  const [doerFilter, setDoerFilter] = useState("all");
   const [dropdownOpen, setDropdownOpen] = useState({ dateFilter: false });
   const [lightboxImage, setLightboxImage] = useState(null); // { url, name }
   const [fetchingProgress, setFetchingProgress] = useState(0);
@@ -99,20 +100,24 @@ const AllTasks = () => {
   const [holidaysList, setHolidaysList] = useState([]);
   const [workingDaysList, setWorkingDaysList] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [userDept, setUserDept] = useState("");
 
   // Fetch holidays and users on mount
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [holidaysRes, usersRes, workingDaysRes] = await Promise.all([
+        const currentUser = localStorage.getItem("user-name");
+        const [holidaysRes, usersRes, workingDaysRes, currentUserRes] = await Promise.all([
           supabase.from('holidays').select('holiday_date'),
-          supabase.from('users').select('user_name').eq('status', 'active').order('user_name', { ascending: true }),
-          supabase.from('working_day_calender').select('working_date')
+          supabase.from('users').select('user_name, department').eq('status', 'active').order('user_name', { ascending: true }),
+          supabase.from('working_day_calender').select('working_date'),
+          currentUser ? supabase.from('users').select('department').eq('user_name', currentUser).single() : Promise.resolve({ data: null })
         ]);
 
         if (holidaysRes.data) setHolidaysList(holidaysRes.data.map(h => h.holiday_date));
-        if (usersRes.data) setAllUsers(usersRes.data.map(u => u.user_name));
+        if (usersRes.data) setAllUsers(usersRes.data);
         if (workingDaysRes.data) setWorkingDaysList(workingDaysRes.data.map(w => w.working_date));
+        if (currentUserRes.data) setUserDept(currentUserRes.data.department || "");
       } catch (err) {
         console.error("Error fetching initial data:", err);
       }
@@ -401,7 +406,7 @@ const AllTasks = () => {
       
       if (!isSuperAdmin) {
         let reportingUsers = [currentUsername];
-        if (currentUserRole === "admin" || currentUserRole === "hod") {
+        if (currentUserRole === "admin") {
           const { data: reports } = await supabase
             .from("users")
             .select("user_name")
@@ -409,11 +414,23 @@ const AllTasks = () => {
           if (reports && reports.length > 0) {
             reportingUsers = [currentUsername, ...reports.map((r) => (r.user_name || ""))];
           }
+        } else if (currentUserRole === "hod" && userDept) {
+          const { data: reports } = await supabase
+            .from("users")
+            .select("user_name")
+            .eq("department", userDept);
+          if (reports && reports.length > 0) {
+            reportingUsers = [...new Set([currentUsername, ...reports.map((r) => (r.user_name || ""))])];
+          }
         }
 
         // Checklist, Maintenance, Repair, EA all have a field for the assigned person
         // Repair uses assigned_person, EA uses doer_name, others use name
         query = query.in(nameField, reportingUsers);
+      }
+
+      if (doerFilter !== "all") {
+        query = query.eq(nameField, doerFilter);
       }
 
       if (showHistory) {
@@ -495,7 +512,7 @@ const AllTasks = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [username, userRole, activeTab, showHistory, holidaysList, workingDaysList, searchTerm, dateFilter]);
+  }, [username, userRole, activeTab, showHistory, holidaysList, workingDaysList, searchTerm, dateFilter, doerFilter, userDept]);
 
   useEffect(() => {
     fetchData();
@@ -1048,6 +1065,7 @@ const AllTasks = () => {
                   setSelectedItems(new Set());
                   setSearchTerm("");
                   setDateFilter("all");
+                  setDoerFilter("all");
                 }} />
               </div>
 
@@ -1082,6 +1100,25 @@ const AllTasks = () => {
 
                   {!showHistory && (
                     <>
+                      <div className="relative">
+                        <select
+                          value={doerFilter}
+                          onChange={(e) => {
+                            setDoerFilter(e.target.value);
+                            setSelectedItems(new Set());
+                          }}
+                          className="block w-full py-1.5 pl-3 pr-8 text-xs font-bold text-gray-600 bg-white border border-gray-200/80 rounded-xl focus:border-purple-500 focus:outline-none appearance-none shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                          style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em` }}
+                        >
+                          <option value="all">All Doers</option>
+                          {allUsers
+                            .filter(u => (userRole === "hod" && userDept) ? u.department === userDept : true)
+                            .map((user, idx) => (
+                            <option key={idx} value={user.user_name}>{user.user_name}</option>
+                          ))}
+                        </select>
+                      </div>
+
                       <div className="relative">
                         <button
                           onClick={() => setDropdownOpen(prev => ({ ...prev, dateFilter: !prev.dateFilter }))}
