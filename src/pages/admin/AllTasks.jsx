@@ -109,7 +109,7 @@ const AllTasks = () => {
         const currentUser = localStorage.getItem("user-name");
         const [holidaysRes, usersRes, workingDaysRes, currentUserRes] = await Promise.all([
           supabase.from('holidays').select('holiday_date'),
-          supabase.from('users').select('user_name, department').eq('status', 'active').order('user_name', { ascending: true }),
+          supabase.from('users').select('user_name, department, reported_by').eq('status', 'active').order('user_name', { ascending: true }),
           supabase.from('working_day_calender').select('working_date'),
           currentUser ? supabase.from('users').select('department').eq('user_name', currentUser).single() : Promise.resolve({ data: null })
         ]);
@@ -414,11 +414,11 @@ const AllTasks = () => {
           if (reports && reports.length > 0) {
             reportingUsers = [currentUsername, ...reports.map((r) => (r.user_name || ""))];
           }
-        } else if (currentUserRole === "hod" && userDept) {
+        } else if (currentUserRole === "hod") {
           const { data: reports } = await supabase
             .from("users")
             .select("user_name")
-            .eq("department", userDept);
+            .eq("reported_by", username);
           if (reports && reports.length > 0) {
             reportingUsers = [...new Set([currentUsername, ...reports.map((r) => (r.user_name || ""))])];
           }
@@ -1112,7 +1112,10 @@ const AllTasks = () => {
                         >
                           <option value="all">All Doers</option>
                           {allUsers
-                            .filter(u => (userRole === "hod" && userDept) ? u.department === userDept : true)
+                            .filter(u => userRole?.toLowerCase() === "hod" ? (
+                              (u.reported_by || "").trim().toLowerCase() === (username || "").trim().toLowerCase() ||
+                              (u.user_name || "").trim().toLowerCase() === (username || "").trim().toLowerCase()
+                            ) : true)
                             .map((user, idx) => (
                             <option key={idx} value={user.user_name}>{user.user_name}</option>
                           ))}
