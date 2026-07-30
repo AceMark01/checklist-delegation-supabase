@@ -85,10 +85,10 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
     if (storedRoleLower === "hod") {
       const designation = (localStorage.getItem("designation") || "").toLowerCase();
       const isMachineOperator = designation.includes("machin") || designation.includes("operat") || designation.includes("oprat");
+      const isSonaliDutta = (storedUsername || "").toLowerCase() === "sonali dutta";
       
-      const hodRestrictedPages = [
+      let hodRestrictedPages = [
         "/dashboard/maintenance",
-        "/dashboard/ea-task",
         "/dashboard/quick-task",
         "/dashboard/holiday-list",
         "/dashboard/working-day-calendar",
@@ -97,6 +97,14 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       
       if (!isMachineOperator) {
         hodRestrictedPages.push("/dashboard/repair");
+      }
+
+      if (isSonaliDutta) {
+        hodRestrictedPages = hodRestrictedPages.filter(p =>
+          p !== "/dashboard/maintenance" &&
+          p !== "/dashboard/repair" &&
+          p !== "/dashboard/quick-task"
+        );
       }
 
       if (hodRestrictedPages.some(p => path.startsWith(p))) {
@@ -205,8 +213,8 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode, showLa
       label: "Quick Task",
       icon: Zap,
       active: location.pathname === "/dashboard/quick-task",
-      // Show for super admin OR anyone with 'admin' role
-      showFor: (isSuperAdmin || userRole.toLowerCase() === "admin") ? ["admin"] : [],
+      // Show for super admin OR anyone with 'admin' role OR Sonali Dutta (HOD)
+      showFor: (isSuperAdmin || userRole.toLowerCase() === "admin" || (username.toLowerCase() === "sonali dutta" && userRole.toLowerCase() === "hod")) ? ["admin", "hod"] : [],
     },
     {
       href: "/dashboard/assign-task",

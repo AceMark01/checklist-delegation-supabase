@@ -5,8 +5,10 @@ import { motion } from 'framer-motion'
 
 export default function TaskManagementTabs({ activeTab, setActiveTab }) {
     const role = (localStorage.getItem("role") || "").toLowerCase();
+    const username = (localStorage.getItem("user-name") || "").toLowerCase();
     const designation = (localStorage.getItem("designation") || "").toLowerCase();
     const isMachineOperator = designation.includes("machin") || designation.includes("operat") || designation.includes("oprat");
+    const isSonaliDutta = username === "sonali dutta";
 
     const allTabs = [
         { id: 'checklist', label: 'Checklist', icon: ClipboardCheck, color: 'text-purple-600', activeColor: 'bg-purple-600' },
@@ -18,7 +20,9 @@ export default function TaskManagementTabs({ activeTab, setActiveTab }) {
     const tabs = allTabs.filter(tab => {
         if (role === "hod") {
             if (tab.id === "checklist") return true;
-            if (tab.id === "repair" && isMachineOperator) return true;
+            if (tab.id === "ea") return true;
+            if (tab.id === "maintenance" && isSonaliDutta) return true;
+            if (tab.id === "repair" && (isMachineOperator || isSonaliDutta)) return true;
             return false;
         }
         return true;

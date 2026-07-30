@@ -14,8 +14,10 @@ export default function AssignTask() {
   }, [navigate]);
 
   const role = (localStorage.getItem("role") || "").toLowerCase();
+  const username = (localStorage.getItem("user-name") || "").toLowerCase();
   const designation = (localStorage.getItem("designation") || "").toLowerCase();
   const isMachineOperator = designation.includes("machin") || designation.includes("operat") || designation.includes("oprat");
+  const isSonaliDutta = username === "sonali dutta";
 
   const allModules = [
     {
@@ -67,7 +69,9 @@ export default function AssignTask() {
   const modules = allModules.filter(mod => {
     if (role === "hod") {
       if (mod.id === "checklist") return true;
-      if (mod.id === "repair" && isMachineOperator) return true;
+      if (mod.id === "ea") return true;
+      if (mod.id === "maintenance" && isSonaliDutta) return true;
+      if (mod.id === "repair" && (isMachineOperator || isSonaliDutta)) return true;
       return false;
     }
     return true;

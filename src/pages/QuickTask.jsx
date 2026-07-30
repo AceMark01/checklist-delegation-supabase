@@ -113,7 +113,10 @@ export default function QuickTask() {
   // HOD Access Restriction
   useEffect(() => {
     const role = localStorage.getItem("role")?.toLowerCase();
-    if (role === "hod") {
+    const username = localStorage.getItem("user-name")?.toLowerCase();
+    const isSonaliDutta = username === "sonali dutta";
+
+    if (role === "hod" && !isSonaliDutta) {
       showToast("Access Denied: HODs cannot access Quick Task management.", "error");
       navigate("/dashboard");
     }

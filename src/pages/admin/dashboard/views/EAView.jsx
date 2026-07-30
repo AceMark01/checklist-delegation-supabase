@@ -118,10 +118,22 @@ export default function EAView() {
 
             // Filter for non-admin users
             if (userRole !== 'admin' && username) {
-                tasks = tasks.filter(t =>
-                    (t.doer_name && t.doer_name.toLowerCase() === username.toLowerCase()) ||
-                    (t.given_by && t.given_by.toLowerCase() === username.toLowerCase())
-                );
+                let reportingUsers = [username.toLowerCase()];
+                if (userRole.toLowerCase() === 'hod') {
+                    const { data: reports } = await supabase
+                        .from('users')
+                        .select('user_name')
+                        .eq('reported_by', username);
+                    if (reports && reports.length > 0) {
+                        reportingUsers = [username.toLowerCase(), ...reports.map(r => (r.user_name || '').toLowerCase())];
+                    }
+                }
+
+                tasks = tasks.filter(t => {
+                    const doer = (t.doer_name || '').toLowerCase();
+                    const givenBy = (t.given_by || '').toLowerCase();
+                    return reportingUsers.includes(doer) || givenBy === username.toLowerCase();
+                });
             }
 
             setEATasks(tasks);
